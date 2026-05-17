@@ -16,7 +16,8 @@
   "scripts": {
     "dev": "vite",
     "build:lib": "tsup",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build:lib"
   },
   "peerDependencies": {
     "react": ">=18",
