@@ -361,7 +361,7 @@ interface TUIImageProps {
  * <TUIImage src="/logo.png" cols={60} rows={20} mode="ascii-gray" invert />
  * ```
  */
-declare function TUIImage({ src, cols, rows, mode, crossOrigin, invert, fallback, className, style, }: TUIImageProps): string | number | bigint | boolean | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | react_jsx_runtime.JSX.Element;
+declare const TUIImage: React.NamedExoticComponent<TUIImageProps>;
 
 /**
  * Value provided by the TUI context to all descendants of {@link TUIRoot}.

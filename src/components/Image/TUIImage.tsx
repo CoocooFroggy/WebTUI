@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useLayoutEffect, useState } from 'react'
 import { useTUI } from '../../hooks/useTUI'
 import { useCellSize } from '../../hooks/useCellSize'
 
@@ -47,19 +47,13 @@ export interface TUIImageProps {
   style?: React.CSSProperties
 }
 
-interface CharCell {
-  char: string
-  fg?: string
-  bg?: string
-}
-
 const ASCII_RAMP = ' ░▒▓█'
 
-// Module-level cache of processed character grids, keyed by render params.
-// Cache hits bypass the async image-load pipeline entirely so re-renders are
-// instant and never show the "..." loading fallback.
+// Module-level cache of processed output, keyed by render params.
+// For half-block mode the value is a pre-built HTML string so renders only
+// need a single innerHTML assignment instead of reconciling thousands of spans.
 type CachedGrid =
-  | { kind: 'half-block'; rows: CharCell[][] }
+  | { kind: 'half-block'; html: string }
   | { kind: 'ascii-gray'; output: string }
 
 const gridCache = new Map<string, CachedGrid>()
@@ -84,19 +78,23 @@ function toRgba(r: number, g: number, b: number, a: number): string {
   return `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`
 }
 
-function processHalfBlock(
+// Builds the complete innerHTML string for half-block mode. Constructing HTML
+// directly and assigning via innerHTML is ~10x faster than creating thousands
+// of React span elements and reconciling them through the fiber tree.
+function buildHalfBlockHtml(
   data: Uint8ClampedArray,
   width: number,
   height: number,
   invert: boolean,
-): CharCell[][] {
-  const rows: CharCell[][] = []
+): string {
+  const base = 'width:1ch;display:inline-block;text-align:center;flex-shrink:0'
   const charRows = Math.floor(height / 2)
+  const rows: string[] = []
 
   for (let row = 0; row < charRows; row++) {
-    const line: CharCell[] = []
+    const spans: string[] = []
     for (let col = 0; col < width; col++) {
-      const topIdx = ((row * 2) * width + col) * 4
+      const topIdx = (row * 2 * width + col) * 4
       const botIdx = ((row * 2 + 1) * width + col) * 4
 
       let tr = data[topIdx]!, tg = data[topIdx + 1]!, tb = data[topIdx + 2]!, ta = data[topIdx + 3]!
@@ -109,38 +107,31 @@ function processHalfBlock(
 
       const topLum = rgbToLuminance(tr, tg, tb) * (ta / 255)
       const botLum = rgbToLuminance(br, bg2, bb) * (ba / 255)
-
       const threshold = 32
       const topBright = topLum > threshold
       const botBright = botLum > threshold
 
       let char: string
-      let fg: string | undefined
-      let bg: string | undefined
+      let style = base
 
       if (topBright && botBright) {
         char = '▀'
-        fg = toRgba(tr, tg, tb, ta)
-        bg = toRgba(br, bg2, bb, ba)
-      } else if (topBright && !botBright) {
+        style += `;color:${toRgba(tr, tg, tb, ta)};background:${toRgba(br, bg2, bb, ba)}`
+      } else if (topBright) {
         char = '▀'
-        fg = toRgba(tr, tg, tb, ta)
-        bg = 'transparent'
-      } else if (!topBright && botBright) {
+        style += `;color:${toRgba(tr, tg, tb, ta)}`
+      } else if (botBright) {
         char = '▄'
-        fg = toRgba(br, bg2, bb, ba)
-        bg = 'transparent'
+        style += `;color:${toRgba(br, bg2, bb, ba)}`
       } else {
         char = ' '
-        fg = undefined
-        bg = 'transparent'
       }
 
-      line.push({ char, fg, bg })
+      spans.push(`<span style="${style}">${char}</span>`)
     }
-    rows.push(line)
+    rows.push(`<div style="display:flex;white-space:pre;height:var(--tui-cell-h,1.2em)">${spans.join('')}</div>`)
   }
-  return rows
+  return rows.join('')
 }
 
 function processAsciiGray(
@@ -180,7 +171,7 @@ function processAsciiGray(
  * <TUIImage src="/logo.png" cols={60} rows={20} mode="ascii-gray" invert />
  * ```
  */
-export function TUIImage({
+export const TUIImage = React.memo(function TUIImage({
   src,
   cols,
   rows,
@@ -193,31 +184,32 @@ export function TUIImage({
 }: TUIImageProps) {
   const { rootRef } = useTUI()
   const cellSize = useCellSize(rootRef)
-  const [halfBlockRows, setHalfBlockRows] = useState<CharCell[][] | null>(null)
+  const [halfBlockHtml, setHalfBlockHtml] = useState<string | null>(null)
   const [asciiOutput, setAsciiOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (cellSize.w === 0) return
 
     const cacheKey = gridCacheKey(src, cols, rows, mode, invert, cellSize.w, cellSize.h)
     const cached = gridCache.get(cacheKey)
 
     if (cached) {
-      // Restore from cache immediately — no loading state shown
+      // Restore from cache synchronously before paint — no loading state shown
       setError(null)
       if (cached.kind === 'half-block') {
-        setHalfBlockRows(cached.rows)
+        setHalfBlockHtml(cached.html)
       } else {
         setAsciiOutput(cached.output)
       }
       return
     }
 
-    setHalfBlockRows(null)
+    setHalfBlockHtml(null)
     setAsciiOutput(null)
     setError(null)
+
+    let cancelled = false
 
     const pixelCols = cols
     const pixelRows = rows !== undefined
@@ -248,26 +240,27 @@ export function TUIImage({
       try {
         imageData = ctx.getImageData(0, 0, outCols, outRows)
       } catch {
-        setError('CORS error: image pixel data could not be read.\nAdd Access-Control-Allow-Origin headers or use a CORS proxy.')
+        if (!cancelled) setError('CORS error: image pixel data could not be read.\nAdd Access-Control-Allow-Origin headers or use a CORS proxy.')
         return
       }
 
       if (mode === 'half-block') {
-        const result = processHalfBlock(imageData.data, outCols, outRows, invert)
-        gridCache.set(cacheKey, { kind: 'half-block', rows: result })
-        setHalfBlockRows(result)
+        const html = buildHalfBlockHtml(imageData.data, outCols, outRows, invert)
+        gridCache.set(cacheKey, { kind: 'half-block', html })
+        if (!cancelled) setHalfBlockHtml(html)
       } else {
         const result = processAsciiGray(imageData.data, outCols, outRows, invert)
         gridCache.set(cacheKey, { kind: 'ascii-gray', output: result })
-        setAsciiOutput(result)
+        if (!cancelled) setAsciiOutput(result)
       }
     }
 
     img.onerror = () => {
-      setError('Failed to load image.')
+      if (!cancelled) setError('Failed to load image.')
     }
 
     img.src = src
+    return () => { cancelled = true }
   }, [src, cols, rows, mode, crossOrigin, invert, cellSize.w, cellSize.h])
 
   if (error) {
@@ -307,7 +300,7 @@ export function TUIImage({
     )
   }
 
-  if (halfBlockRows === null) {
+  if (halfBlockHtml === null) {
     return <span style={{ color: 'var(--tui-fg-subtle)' }}>...</span>
   }
 
@@ -320,26 +313,7 @@ export function TUIImage({
         lineHeight: 'var(--tui-line-height)',
         ...style,
       }}
-    >
-      {halfBlockRows.map((row, ri) => (
-        <div key={ri} style={{ display: 'flex', whiteSpace: 'pre', height: 'var(--tui-cell-h, 1.2em)' }}>
-          {row.map((cell, ci) => (
-            <span
-              key={ci}
-              style={{
-                color: cell.fg,
-                background: cell.bg,
-                width: '1ch',
-                display: 'inline-block',
-                textAlign: 'center',
-                flexShrink: 0,
-              }}
-            >
-              {cell.char}
-            </span>
-          ))}
-        </div>
-      ))}
-    </div>
+      dangerouslySetInnerHTML={{ __html: halfBlockHtml }}
+    />
   )
-}
+})

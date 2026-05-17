@@ -1,15 +1,16 @@
 'use strict';
 
-var react = require('react');
+var React4 = require('react');
 var jsxRuntime = require('react/jsx-runtime');
 var figlet = require('figlet');
 
 function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
 
+var React4__default = /*#__PURE__*/_interopDefault(React4);
 var figlet__default = /*#__PURE__*/_interopDefault(figlet);
 
 // src/components/TUIRoot.tsx
-var TUIContext = react.createContext(null);
+var TUIContext = React4.createContext(null);
 
 // src/context/themes.ts
 var themes = {
@@ -160,27 +161,27 @@ function TUIRoot({
   className,
   style
 }) {
-  const [flavor, setFlavorState] = react.useState(initialFlavor);
-  const rootRef = react.useRef(null);
-  const containerRegistry = react.useRef(/* @__PURE__ */ new Map());
-  react.useEffect(() => {
+  const [flavor, setFlavorState] = React4.useState(initialFlavor);
+  const rootRef = React4.useRef(null);
+  const containerRegistry = React4.useRef(/* @__PURE__ */ new Map());
+  React4.useEffect(() => {
     injectBaseCSS();
     if (fontUrl) injectFont(fontUrl);
   }, [fontUrl]);
-  react.useEffect(() => {
+  React4.useEffect(() => {
     setFlavorState(initialFlavor);
   }, [initialFlavor]);
-  const setFlavor = react.useCallback((f) => setFlavorState(f), []);
-  const registerContainer = react.useCallback(
+  const setFlavor = React4.useCallback((f) => setFlavorState(f), []);
+  const registerContainer = React4.useCallback(
     (id, ref) => {
       containerRegistry.current.set(id, ref);
     },
     []
   );
-  const unregisterContainer = react.useCallback((id) => {
+  const unregisterContainer = React4.useCallback((id) => {
     containerRegistry.current.delete(id);
   }, []);
-  const getContainerRect = react.useCallback((id) => {
+  const getContainerRect = React4.useCallback((id) => {
     const ref = containerRegistry.current.get(id);
     return ref?.current?.getBoundingClientRect() ?? null;
   }, []);
@@ -249,7 +250,7 @@ var BORDERS = {
   heavy: { tl: "\u250F", tr: "\u2513", bl: "\u2517", br: "\u251B", h: "\u2501", v: "\u2503" }
 };
 function useTUI() {
-  const ctx = react.useContext(TUIContext);
+  const ctx = React4.useContext(TUIContext);
   if (!ctx) throw new Error("useTUI must be used inside <TUIRoot>");
   return ctx;
 }
@@ -310,9 +311,9 @@ function Container({
   style,
   children
 }) {
-  const ref = react.useRef(null);
+  const ref = React4.useRef(null);
   const { registerContainer, unregisterContainer } = useTUI();
-  react.useEffect(() => {
+  React4.useEffect(() => {
     if (!id) return;
     registerContainer(id, ref);
     return () => unregisterContainer(id);
@@ -481,9 +482,9 @@ function BigText({
   className,
   style
 }) {
-  const [output, setOutput] = react.useState(null);
-  const [error, setError] = react.useState(null);
-  react.useEffect(() => {
+  const [output, setOutput] = React4.useState(null);
+  const [error, setError] = React4.useState(null);
+  React4.useEffect(() => {
     ensureFontPath();
     let cancelled = false;
     setOutput(null);
@@ -526,8 +527,8 @@ function BigText({
   );
 }
 function useCellSize(rootRef) {
-  const [size, setSize] = react.useState({ w: 8, h: 16.8 });
-  react.useEffect(() => {
+  const [size, setSize] = React4.useState({ w: 8, h: 16.8 });
+  React4.useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
     const probe = document.createElement("span");
@@ -551,11 +552,12 @@ function rgbToLuminance(r, g, b) {
 function toRgba(r, g, b, a) {
   return `rgba(${r},${g},${b},${(a / 255).toFixed(2)})`;
 }
-function processHalfBlock(data, width, height, invert) {
-  const rows = [];
+function buildHalfBlockHtml(data, width, height, invert) {
+  const base = "width:1ch;display:inline-block;text-align:center;flex-shrink:0";
   const charRows = Math.floor(height / 2);
+  const rows = [];
   for (let row = 0; row < charRows; row++) {
-    const line = [];
+    const spans = [];
     for (let col = 0; col < width; col++) {
       const topIdx = (row * 2 * width + col) * 4;
       const botIdx = ((row * 2 + 1) * width + col) * 4;
@@ -575,30 +577,24 @@ function processHalfBlock(data, width, height, invert) {
       const topBright = topLum > threshold;
       const botBright = botLum > threshold;
       let char;
-      let fg;
-      let bg;
+      let style = base;
       if (topBright && botBright) {
         char = "\u2580";
-        fg = toRgba(tr, tg, tb, ta);
-        bg = toRgba(br, bg2, bb, ba);
-      } else if (topBright && !botBright) {
+        style += `;color:${toRgba(tr, tg, tb, ta)};background:${toRgba(br, bg2, bb, ba)}`;
+      } else if (topBright) {
         char = "\u2580";
-        fg = toRgba(tr, tg, tb, ta);
-        bg = "transparent";
-      } else if (!topBright && botBright) {
+        style += `;color:${toRgba(tr, tg, tb, ta)}`;
+      } else if (botBright) {
         char = "\u2584";
-        fg = toRgba(br, bg2, bb, ba);
-        bg = "transparent";
+        style += `;color:${toRgba(br, bg2, bb, ba)}`;
       } else {
         char = " ";
-        fg = void 0;
-        bg = "transparent";
       }
-      line.push({ char, fg, bg });
+      spans.push(`<span style="${style}">${char}</span>`);
     }
-    rows.push(line);
+    rows.push(`<div style="display:flex;white-space:pre;height:var(--tui-cell-h,1.2em)">${spans.join("")}</div>`);
   }
-  return rows;
+  return rows.join("");
 }
 function processAsciiGray(data, width, height, invert) {
   let result = "";
@@ -614,7 +610,7 @@ function processAsciiGray(data, width, height, invert) {
   }
   return result;
 }
-function TUIImage({
+var TUIImage = React4__default.default.memo(function TUIImage2({
   src,
   cols,
   rows,
@@ -627,26 +623,26 @@ function TUIImage({
 }) {
   const { rootRef } = useTUI();
   const cellSize = useCellSize(rootRef);
-  const [halfBlockRows, setHalfBlockRows] = react.useState(null);
-  const [asciiOutput, setAsciiOutput] = react.useState(null);
-  const [error, setError] = react.useState(null);
-  react.useRef(null);
-  react.useEffect(() => {
+  const [halfBlockHtml, setHalfBlockHtml] = React4.useState(null);
+  const [asciiOutput, setAsciiOutput] = React4.useState(null);
+  const [error, setError] = React4.useState(null);
+  React4.useLayoutEffect(() => {
     if (cellSize.w === 0) return;
     const cacheKey = gridCacheKey(src, cols, rows, mode, invert, cellSize.w, cellSize.h);
     const cached = gridCache.get(cacheKey);
     if (cached) {
       setError(null);
       if (cached.kind === "half-block") {
-        setHalfBlockRows(cached.rows);
+        setHalfBlockHtml(cached.html);
       } else {
         setAsciiOutput(cached.output);
       }
       return;
     }
-    setHalfBlockRows(null);
+    setHalfBlockHtml(null);
     setAsciiOutput(null);
     setError(null);
+    let cancelled = false;
     const pixelCols = cols;
     const pixelRows = rows !== void 0 ? mode === "half-block" ? rows * 2 : rows : void 0;
     const img = new Image();
@@ -665,23 +661,26 @@ function TUIImage({
       try {
         imageData = ctx.getImageData(0, 0, outCols, outRows);
       } catch {
-        setError("CORS error: image pixel data could not be read.\nAdd Access-Control-Allow-Origin headers or use a CORS proxy.");
+        if (!cancelled) setError("CORS error: image pixel data could not be read.\nAdd Access-Control-Allow-Origin headers or use a CORS proxy.");
         return;
       }
       if (mode === "half-block") {
-        const result = processHalfBlock(imageData.data, outCols, outRows, invert);
-        gridCache.set(cacheKey, { kind: "half-block", rows: result });
-        setHalfBlockRows(result);
+        const html = buildHalfBlockHtml(imageData.data, outCols, outRows, invert);
+        gridCache.set(cacheKey, { kind: "half-block", html });
+        if (!cancelled) setHalfBlockHtml(html);
       } else {
         const result = processAsciiGray(imageData.data, outCols, outRows, invert);
         gridCache.set(cacheKey, { kind: "ascii-gray", output: result });
-        setAsciiOutput(result);
+        if (!cancelled) setAsciiOutput(result);
       }
     };
     img.onerror = () => {
-      setError("Failed to load image.");
+      if (!cancelled) setError("Failed to load image.");
     };
     img.src = src;
+    return () => {
+      cancelled = true;
+    };
   }, [src, cols, rows, mode, crossOrigin, invert, cellSize.w, cellSize.h]);
   if (error) {
     return fallback ?? /* @__PURE__ */ jsxRuntime.jsx(
@@ -716,7 +715,7 @@ function TUIImage({
       }
     );
   }
-  if (halfBlockRows === null) {
+  if (halfBlockHtml === null) {
     return /* @__PURE__ */ jsxRuntime.jsx("span", { style: { color: "var(--tui-fg-subtle)" }, children: "..." });
   }
   return /* @__PURE__ */ jsxRuntime.jsx(
@@ -729,24 +728,10 @@ function TUIImage({
         lineHeight: "var(--tui-line-height)",
         ...style
       },
-      children: halfBlockRows.map((row, ri) => /* @__PURE__ */ jsxRuntime.jsx("div", { style: { display: "flex", whiteSpace: "pre", height: "var(--tui-cell-h, 1.2em)" }, children: row.map((cell, ci) => /* @__PURE__ */ jsxRuntime.jsx(
-        "span",
-        {
-          style: {
-            color: cell.fg,
-            background: cell.bg,
-            width: "1ch",
-            display: "inline-block",
-            textAlign: "center",
-            flexShrink: 0
-          },
-          children: cell.char
-        },
-        ci
-      )) }, ri))
+      dangerouslySetInnerHTML: { __html: halfBlockHtml }
     }
   );
-}
+});
 
 exports.BigText = BigText;
 exports.Container = Container;
