@@ -75,6 +75,7 @@ interface TUIRootProps {
   fontSize?: number
   lineHeight?: number
   fontUrl?: string
+  fullscreen?: boolean
   children: ReactNode
   className?: string
   style?: CSSProperties
@@ -86,6 +87,7 @@ export function TUIRoot({
   fontSize = 14,
   lineHeight = 1.2,
   fontUrl = JETBRAINS_MONO_URL,
+  fullscreen,
   children,
   className,
   style,
@@ -151,7 +153,7 @@ export function TUIRoot({
         data-tui-flavor={flavor}
         ref={rootRef}
         className={className}
-        style={{ ...cssVars, ...style }}
+        style={{ ...(fullscreen && { width: '100vw', height: '100vh', overflow: 'hidden' }), ...cssVars, ...style }}
       >
         <div
           data-tui-content=""

@@ -22,6 +22,7 @@ export interface ContainerProps {
   padding?: number | [number, number]
   align?: 'start' | 'center' | 'end'
   justify?: 'start' | 'center' | 'end' | 'space-between'
+  fill?: boolean
   bg?: string
   borderColor?: string
   id?: string
@@ -84,6 +85,7 @@ export function Container({
   padding,
   align,
   justify,
+  fill,
   bg,
   borderColor,
   id,
@@ -114,6 +116,8 @@ export function Container({
       : { width: '100%' }),
     ...(rows !== undefined
       ? { height: `calc(${rows} * ${CELL_H})` }
+      : fill
+      ? { height: '100%' }
       : {}),
     ...(hasBorder && {
       paddingTop: CELL_H,
@@ -129,7 +133,7 @@ export function Container({
   const innerStyle: CSSProperties = {
     position: 'relative',
     width: '100%',
-    ...(rows !== undefined ? { height: '100%' } : {}),
+    ...((rows !== undefined || fill) ? { height: '100%' } : {}),
     display: 'flex',
     flexDirection: direction,
     ...(gap > 0 && {
