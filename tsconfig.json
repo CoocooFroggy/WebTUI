@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "strict": true,
+    "declaration": true,
+    "declarationDir": "dist",
+    "skipLibCheck": true,
+    "paths": {
+      "@webtui": ["./src/index.ts"],
+      "@webtui/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "demo/src"]
+}
