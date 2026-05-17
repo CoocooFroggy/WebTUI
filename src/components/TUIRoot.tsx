@@ -69,18 +69,62 @@ function injectFont(fontUrl: string) {
 const JETBRAINS_MONO_URL =
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap'
 
+/** Props for the {@link TUIRoot} component. */
 interface TUIRootProps {
+  /**
+   * Built-in color theme to apply.
+   * @default 'mocha'
+   */
   theme?: TUIFlavor
+  /**
+   * Override individual theme CSS variables. Merged on top of the active `theme`,
+   * so you only need to specify the values you want to change.
+   * @example { '--tui-bg': '#000000', '--tui-accent': '#ff0000' }
+   */
   customTheme?: Partial<TUITheme>
+  /**
+   * Base font size in pixels. Sets the `--tui-font-size` CSS variable and
+   * determines the cell height together with `lineHeight`.
+   * @default 14
+   */
   fontSize?: number
+  /**
+   * Line height multiplier. Sets `--tui-cell-h` = `fontSize × lineHeight`.
+   * @default 1.2
+   */
   lineHeight?: number
+  /**
+   * URL of a font stylesheet to inject into `<head>`.
+   * Defaults to JetBrains Mono from Google Fonts. Pass `''` to skip font injection.
+   */
   fontUrl?: string
+  /**
+   * When `true`, the root element fills the entire viewport (`100vw × 100vh`)
+   * with `overflow: hidden`.
+   */
   fullscreen?: boolean
+  /** Content rendered inside the TUI context. Must include all other WebTUI components. */
   children: ReactNode
   className?: string
   style?: CSSProperties
 }
 
+/**
+ * Root provider for a WebTUI application. **Every other WebTUI component must be a descendant.**
+ *
+ * Injects base CSS resets and a blink animation into `<head>`, loads the configured font,
+ * and sets all `--tui-*` CSS variables on the root element. Provides theme state and the
+ * container registry to all descendants via React context.
+ *
+ * @example
+ * ```tsx
+ * <TUIRoot theme="nord" fontSize={16}>
+ *   <Container border="single" cols={40} rows={10}>
+ *     <Text>Hello, terminal world!</Text>
+ *   </Container>
+ * </TUIRoot>
+ * ```
+ */
 export function TUIRoot({
   theme: initialFlavor = 'mocha',
   customTheme,

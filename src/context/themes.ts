@@ -1,24 +1,57 @@
+/**
+ * A complete set of CSS custom property values that define a WebTUI color theme.
+ * All variables are scoped to `[data-tui-root]` and cascade to every child component.
+ * Pass a `Partial<TUITheme>` as `customTheme` on {@link TUIRoot} to override individual values.
+ */
 export interface TUITheme {
+  /** Primary foreground / text color. */
   '--tui-fg': string
+  /** Secondary foreground for de-emphasized text. */
   '--tui-fg-muted': string
+  /** Tertiary foreground for placeholder or ghost text. */
   '--tui-fg-subtle': string
+  /** Primary background color. */
   '--tui-bg': string
+  /** Elevated surface background (e.g. panels, cards). */
   '--tui-bg-surface': string
+  /** Overlay background (e.g. modals, tooltips). */
   '--tui-bg-overlay': string
+  /** Primary accent / highlight color. */
   '--tui-accent': string
+  /** Secondary accent for softer highlights. */
   '--tui-accent-muted': string
+  /** Default border color. */
   '--tui-border': string
+  /** Border color when an element is focused. */
   '--tui-border-focus': string
+  /** Color for success / positive state indicators. */
   '--tui-success': string
+  /** Color for warning / caution state indicators. */
   '--tui-warning': string
+  /** Color for error / danger state indicators. */
   '--tui-error': string
+  /** Color for informational state indicators. */
   '--tui-info': string
+  /** Foreground color inside a cursor block. */
   '--tui-cursor-fg': string
+  /** Background color of a cursor block. */
   '--tui-cursor-bg': string
+  /** Background color of selected text. */
   '--tui-selection-bg': string
+  /** Foreground color of selected text. */
   '--tui-selection-fg': string
 }
 
+/**
+ * Built-in color theme identifier passed to `<TUIRoot theme="...">`.
+ *
+ * | Value       | Style                    |
+ * |-------------|--------------------------|
+ * | `'mocha'`   | Catppuccin Mocha (dark)  |
+ * | `'latte'`   | Catppuccin Latte (light) |
+ * | `'nord'`    | Nord (dark, arctic)      |
+ * | `'gruvbox'` | Gruvbox (warm dark)      |
+ */
 export type TUIFlavor = 'mocha' | 'latte' | 'nord' | 'gruvbox'
 
 export const themes: Record<TUIFlavor, TUITheme> = {

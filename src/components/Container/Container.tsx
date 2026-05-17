@@ -8,23 +8,50 @@ export type { BorderStyle } from './border'
 import { BorderStyle, BORDERS } from './border'
 import { useTUI } from '../../hooks/useTUI'
 
+/** Props for the {@link Container} component. */
 export interface ContainerProps {
-  /** Width in character cells. Omit to fill parent width. */
+  /** Width in character cells (`1ch` units). Omit to fill parent width. */
   cols?: number
   /** Height in character cells. Omit to size to content. */
   rows?: number
+  /**
+   * Border style drawn with Unicode box-drawing characters.
+   * @default 'none'
+   */
   border?: BorderStyle
+  /** Text displayed in the top border. Only visible when `border` is not `'none'`. */
   title?: string
+  /**
+   * Horizontal placement of `title` within the top border.
+   * @default 'left'
+   */
   titleSide?: 'left' | 'center' | 'right'
+  /**
+   * Flex direction for children.
+   * @default 'column'
+   */
   direction?: 'row' | 'column'
+  /**
+   * Gap between children in character cells.
+   * @default 0
+   */
   gap?: number
-  /** Inner padding in cells: number applies to all sides, [v, h] for vertical/horizontal. */
+  /** Inner padding in cells: a single number applies to all sides; `[vertical, horizontal]` applies separately. */
   padding?: number | [number, number]
+  /** Cross-axis alignment (`align-items`). */
   align?: 'start' | 'center' | 'end'
+  /** Main-axis alignment (`justify-content`). */
   justify?: 'start' | 'center' | 'end' | 'space-between'
+  /** When `true`, the container stretches to fill its parent's full height. */
   fill?: boolean
+  /** Background CSS color value. */
   bg?: string
+  /** Border color. Defaults to the theme's `--tui-border` variable. */
   borderColor?: string
+  /**
+   * Registers this container in the TUI context registry under the given key,
+   * making its bounding rect retrievable via `getContainerRect(id)`.
+   */
   id?: string
   className?: string
   style?: CSSProperties
@@ -74,6 +101,21 @@ function TopFill({ char, title, titleSide }: { char: string; title?: string; tit
   )
 }
 
+/**
+ * Flexible layout box with an optional Unicode border and title.
+ *
+ * All dimensions are expressed in character cells — the fundamental unit of the TUI grid.
+ * Children are arranged with flexbox; use `direction`, `gap`, `padding`, `align`, and
+ * `justify` to compose complex layouts.
+ *
+ * @example
+ * ```tsx
+ * <Container border="rounded" cols={30} rows={8} title="Stats" padding={1}>
+ *   <Text>Uptime: 3d 14h</Text>
+ *   <Text variant="success">Status: OK</Text>
+ * </Container>
+ * ```
+ */
 export function Container({
   cols,
   rows,

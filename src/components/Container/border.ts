@@ -1,8 +1,30 @@
+/**
+ * Style of Unicode box-drawing border rendered by a {@link Container}.
+ *
+ * | Value      | Characters      |
+ * |------------|-----------------|
+ * | `'none'`   | (no border)     |
+ * | `'single'` | `┌─┐│└┘`        |
+ * | `'double'` | `╔═╗║╚╝`        |
+ * | `'rounded'`| `╭─╮│╰╯`        |
+ * | `'heavy'`  | `┏━┓┃┗┛`        |
+ */
 export type BorderStyle = 'none' | 'single' | 'double' | 'rounded' | 'heavy'
 
+/** The six Unicode characters that define a single border style. */
 export interface BorderCharSet {
-  tl: string; tr: string; bl: string; br: string
-  h: string; v: string
+  /** Top-left corner. */
+  tl: string
+  /** Top-right corner. */
+  tr: string
+  /** Bottom-left corner. */
+  bl: string
+  /** Bottom-right corner. */
+  br: string
+  /** Horizontal segment. */
+  h: string
+  /** Vertical segment. */
+  v: string
 }
 
 export const BORDERS: Record<Exclude<BorderStyle, 'none'>, BorderCharSet> = {
@@ -12,6 +34,27 @@ export const BORDERS: Record<Exclude<BorderStyle, 'none'>, BorderCharSet> = {
   heavy:   { tl: '┏', tr: '┓', bl: '┗', br: '┛', h: '━', v: '┃' },
 }
 
+/**
+ * Generates a complete multi-line border string suitable for rendering inside a `<pre>`.
+ * Intended for static/server-side rendering — the {@link Container} component uses a
+ * CSS-overflow approach instead and does not call this function.
+ *
+ * @param style - Border character set to use.
+ * @param cols - Total column width, including the two border characters on each side.
+ * @param rows - Total row height, including the top and bottom border rows.
+ * @param title - Optional title inserted in the top border. Silently omitted if the box is too narrow.
+ * @param titleSide - Horizontal alignment of the title within the top border.
+ * @returns A newline-separated string forming the complete box, or `''` if dimensions are too small.
+ *
+ * @example
+ * ```ts
+ * buildBorderString('single', 22, 4, 'Hello', 'left')
+ * // ┌─ Hello ────────────┐
+ * // │                    │
+ * // │                    │
+ * // └────────────────────┘
+ * ```
+ */
 export function buildBorderString(
   style: Exclude<BorderStyle, 'none'>,
   cols: number,

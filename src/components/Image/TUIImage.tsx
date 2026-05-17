@@ -2,15 +2,46 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useTUI } from '../../hooks/useTUI'
 import { useCellSize } from '../../hooks/useCellSize'
 
+/**
+ * Rendering algorithm used by {@link TUIImage}.
+ *
+ * - `'half-block'` — Uses Unicode half-block characters (`▀` / `▄`) with per-cell RGBA colors.
+ *   Produces full-color output; each character cell represents **two** pixel rows.
+ * - `'ascii-gray'` — Maps pixel luminance to the ASCII ramp ` ░▒▓█`.
+ *   Produces monochrome output using the active `--tui-fg` color.
+ */
 export type ImageMode = 'half-block' | 'ascii-gray'
 
+/** Props for the {@link TUIImage} component. */
 export interface TUIImageProps {
+  /** URL of the source image. Must be CORS-accessible when hosted on a different origin. */
   src: string
+  /** Output width in character cells. */
   cols: number
+  /**
+   * Output height in character cells. When omitted, the source image's aspect ratio is
+   * preserved, accounting for the actual rendered cell dimensions.
+   */
   rows?: number
+  /**
+   * Rendering algorithm to use.
+   * @default 'half-block'
+   */
   mode?: ImageMode
+  /**
+   * CORS credential mode forwarded to the internal `<img>` element.
+   * @default 'anonymous'
+   */
   crossOrigin?: 'anonymous' | 'use-credentials'
+  /**
+   * When `true`, pixel brightness values are inverted before character mapping.
+   * @default false
+   */
   invert?: boolean
+  /**
+   * Fallback content shown when the image fails to load or a CORS error occurs.
+   * Defaults to a preformatted error message in `--tui-error` color.
+   */
   fallback?: React.ReactNode
   className?: string
   style?: React.CSSProperties
@@ -111,6 +142,23 @@ function processAsciiGray(
   return result
 }
 
+/**
+ * Converts a raster image to a character-art representation rendered entirely in HTML.
+ *
+ * Image pixels are sampled via an off-screen `<canvas>` and mapped to Unicode characters.
+ * The output respects the current cell dimensions from {@link useCellSize} so the result
+ * stays proportional at any font size.
+ *
+ * **CORS note:** The source image must serve an `Access-Control-Allow-Origin` header,
+ * or the canvas `getImageData` call will be blocked. Use a CORS proxy if you cannot
+ * control the server headers.
+ *
+ * @example
+ * ```tsx
+ * <TUIImage src="/avatar.png" cols={40} mode="half-block" />
+ * <TUIImage src="/logo.png" cols={60} rows={20} mode="ascii-gray" invert />
+ * ```
+ */
 export function TUIImage({
   src,
   cols,

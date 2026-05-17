@@ -32,16 +32,48 @@ const VARIANT_COLORS: Record<TextVariant, string> = {
   info:     'var(--tui-info)',
 }
 
+/** Props for the {@link BigText} component. */
 export interface BigTextProps {
+  /** Text string to render as ASCII art. */
   children: string
+  /**
+   * Figlet font name. Any font bundled with the `figlet` npm package is valid.
+   * Fonts are loaded asynchronously from `https://unpkg.com/figlet@1/fonts` on first use.
+   * @default 'Standard'
+   */
   font?: figlet.Fonts
+  /**
+   * Color variant (same options as {@link TextVariant}).
+   * @default 'default'
+   */
   variant?: TextVariant
+  /**
+   * Text alignment of the rendered ASCII art block.
+   * @default 'left'
+   */
   align?: 'left' | 'center' | 'right'
+  /**
+   * Node displayed while the figlet font is loading.
+   * Defaults to a subtle `...` span.
+   */
   fallback?: React.ReactNode
   className?: string
   style?: React.CSSProperties
 }
 
+/**
+ * Renders text as large ASCII art using the [figlet](https://www.npmjs.com/package/figlet) library.
+ *
+ * Fonts are fetched from the unpkg CDN on first use and cached in memory for subsequent renders.
+ * A `fallback` node is shown while loading. If figlet fails (e.g. unknown font name or network
+ * error), an error message is shown in `--tui-error` color.
+ *
+ * @example
+ * ```tsx
+ * <BigText font="Big">WebTUI</BigText>
+ * <BigText variant="accent" align="center">Hello</BigText>
+ * ```
+ */
 export function BigText({
   children,
   font = 'Standard',
