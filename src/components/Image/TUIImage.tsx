@@ -55,6 +55,27 @@ interface CharCell {
 
 const ASCII_RAMP = ' ░▒▓█'
 
+// Module-level cache of processed character grids, keyed by render params.
+// Cache hits bypass the async image-load pipeline entirely so re-renders are
+// instant and never show the "..." loading fallback.
+type CachedGrid =
+  | { kind: 'half-block'; rows: CharCell[][] }
+  | { kind: 'ascii-gray'; output: string }
+
+const gridCache = new Map<string, CachedGrid>()
+
+function gridCacheKey(
+  src: string,
+  cols: number,
+  rows: number | undefined,
+  mode: ImageMode,
+  invert: boolean,
+  cellW: number,
+  cellH: number,
+): string {
+  return `${src}|${cols}|${rows ?? 'auto'}|${mode}|${invert}|${cellW.toFixed(2)}|${cellH.toFixed(2)}`
+}
+
 function rgbToLuminance(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
@@ -180,6 +201,20 @@ export function TUIImage({
   useEffect(() => {
     if (cellSize.w === 0) return
 
+    const cacheKey = gridCacheKey(src, cols, rows, mode, invert, cellSize.w, cellSize.h)
+    const cached = gridCache.get(cacheKey)
+
+    if (cached) {
+      // Restore from cache immediately — no loading state shown
+      setError(null)
+      if (cached.kind === 'half-block') {
+        setHalfBlockRows(cached.rows)
+      } else {
+        setAsciiOutput(cached.output)
+      }
+      return
+    }
+
     setHalfBlockRows(null)
     setAsciiOutput(null)
     setError(null)
@@ -218,9 +253,13 @@ export function TUIImage({
       }
 
       if (mode === 'half-block') {
-        setHalfBlockRows(processHalfBlock(imageData.data, outCols, outRows, invert))
+        const result = processHalfBlock(imageData.data, outCols, outRows, invert)
+        gridCache.set(cacheKey, { kind: 'half-block', rows: result })
+        setHalfBlockRows(result)
       } else {
-        setAsciiOutput(processAsciiGray(imageData.data, outCols, outRows, invert))
+        const result = processAsciiGray(imageData.data, outCols, outRows, invert)
+        gridCache.set(cacheKey, { kind: 'ascii-gray', output: result })
+        setAsciiOutput(result)
       }
     }
 
